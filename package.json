@@ -1,0 +1,40 @@
+{
+  "name": "8ball-pool",
+  "version": "1.0.1",
+  "description": "Play 8-ball pool in your terminal — real ball physics, aim guide, and full rules. Zero dependencies.",
+  "type": "module",
+  "bin": {
+    "8ball-pool": "bin/cli.js",
+    "8ball": "bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/cli.js",
+    "test": "node test/smoke.js"
+  },
+  "keywords": [
+    "pool",
+    "billiards",
+    "8-ball",
+    "8ball",
+    "cli",
+    "terminal",
+    "game",
+    "physics",
+    "ascii"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}
