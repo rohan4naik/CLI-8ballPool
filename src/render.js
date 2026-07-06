@@ -122,9 +122,12 @@ export function renderTable(balls, { aim = null } = {}) {
 
 export const COLORS = C;
 
-// Swatch legend for the scoreboard, using the real ball styles.
-export const LEGEND =
-  `${BALL.solid} 1 ${C.reset} solids   ` +
-  `${BALL.stripe} 9 ${C.reset} stripes   ` +
-  `${BALL.eight} 8 ${C.reset} eight   ` +
-  `${BALL.cue} O ${C.reset} cue`;
+// Swatch legend for the scoreboard. Each swatch is a plain colour block so
+// it can't be misread as a ball number.
+const swatch = (style, label) => `${style}  ${C.reset} ${label}`;
+export const LEGEND = [
+  swatch(BALL.solid, "solids 1-7"),
+  swatch(BALL.stripe, "stripes 9-15"),
+  swatch(BALL.eight, "8 ball"),
+  swatch(BALL.cue, "cue"),
+].join("   ");

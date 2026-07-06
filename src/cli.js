@@ -6,7 +6,17 @@ import { PoolGame } from "./game.js";
 import { renderTable, COLORS, LEGEND } from "./render.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const CLEAR = "\x1b[2J\x1b[H";
+const HOME = "\x1b[H"; // move cursor to top-left
+const ERASE_BELOW = "\x1b[0J"; // clear from cursor to end of screen
+const HIDE = "\x1b[?25l";
+const SHOW = "\x1b[?25h";
+
+// Repaint in place: home the cursor, write the frame, then erase anything
+// left below. Avoids the scroll-into-scrollback stacking that a full 2J
+// clear causes on some terminals (e.g. Apple Terminal).
+function paint(text) {
+  process.stdout.write(HOME + text + "\n" + ERASE_BELOW);
+}
 
 function groupLabel(g) {
   return g === "solid" ? "SOLIDS (1-7)" : g === "stripe" ? "STRIPES (9-15)" : "open";
@@ -26,15 +36,11 @@ function scoreboard(game, extra = []) {
 }
 
 function draw(game, { aim = null, extra = [] } = {}) {
-  process.stdout.write(CLEAR);
-  console.log(scoreboard(game, extra));
-  console.log(renderTable(game.balls, { aim }));
+  paint(scoreboard(game, extra) + "\n" + renderTable(game.balls, { aim }));
 }
 
 function drawFrame(game, frame, note) {
-  process.stdout.write(CLEAR);
-  console.log(scoreboard(game, [note]));
-  console.log(renderTable(frame, {}));
+  paint(scoreboard(game, [note]) + "\n" + renderTable(frame, {}));
 }
 
 async function playShot(game, frames) {
@@ -110,6 +116,9 @@ export async function run() {
   process.stdin.setRawMode(true);
   process.stdin.resume();
 
+  // One full clear + hide cursor; every frame after repaints in place.
+  process.stdout.write("\x1b[2J\x1b[3J\x1b[H" + HIDE);
+
   const state = { angle: 0, power: 60 }; // aim toward the rack to start
   let note = `${COLORS.guide}Break! Turn toward the rack and hit hard.${COLORS.reset}`;
 
@@ -129,6 +138,7 @@ export async function run() {
     console.log("\nThanks for playing.\n");
   }
 
+  process.stdout.write(SHOW);
   try {
     process.stdin.setRawMode(false);
   } catch {}
