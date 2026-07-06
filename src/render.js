@@ -6,7 +6,7 @@ import { TABLE, POCKETS, BALL_RADIUS } from "./table.js";
 import { add, scale, fromAngle } from "./vector.js";
 
 const COLS = 76;
-const ROWS = 19;
+const ROWS = 15;
 
 // Plain foreground colours — used for text (scoreboard, guide).
 const C = {

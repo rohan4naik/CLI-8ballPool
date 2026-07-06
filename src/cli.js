@@ -27,9 +27,7 @@ function scoreboard(game, extra = []) {
   const mark = (i) => (turn === i && !game.gameOver ? "▶ " : "  ");
   const remain = (g) => (g ? game.onTable(g).length : "-");
   const lines = [
-    `${COLORS.solid}8-BALL POOL${COLORS.reset}`,
-    `${mark(0)}Player 1  ${groupLabel(game.groups[0]).padEnd(14)} left:${remain(game.groups[0])}`,
-    `${mark(1)}Player 2  ${groupLabel(game.groups[1]).padEnd(14)} left:${remain(game.groups[1])}`,
+    `${mark(0)}P1 ${groupLabel(game.groups[0]).padEnd(14)} left:${remain(game.groups[0])}    ${mark(1)}P2 ${groupLabel(game.groups[1]).padEnd(14)} left:${remain(game.groups[1])}`,
     LEGEND,
   ];
   return lines.concat(extra).join("\n");
@@ -62,12 +60,19 @@ function powerBar(p) {
   return "█".repeat(n) + "░".repeat(20 - n);
 }
 
+// Strip ANSI, hard-cap to the table width so a long message can't wrap and
+// change the frame height (which would reintroduce ghost rows).
+function clip(s, width = 76) {
+  const plain = s.replace(/\x1b\[[0-9;]*m/g, "");
+  return plain.length > width ? plain.slice(0, width - 1) + "…" : plain;
+}
+
 function aimHelp(angle, power, note) {
   const a = (((angle % 360) + 360) % 360).toFixed(0).padStart(3);
   return [
-    `${COLORS.guide}Aim ${arrowFor(angle)}  angle ${a}°   power ${String(Math.round(power)).padStart(3)} [${powerBar(power)}]${COLORS.reset}`,
-    `${COLORS.guide}←/→ turn   ,/. fine   ↑/↓ power   Enter = shoot   q = quit${COLORS.reset}`,
-    note,
+    `${COLORS.guide}Aim ${arrowFor(angle)} ${a}°  power ${String(Math.round(power)).padStart(3)} [${powerBar(power)}]${COLORS.reset}`,
+    `${COLORS.guide}←/→ turn  ,/. fine  ↑/↓ power  Enter shoot  q quit${COLORS.reset}`,
+    `${COLORS.guide}${clip(note)}${COLORS.reset}`,
   ];
 }
 
@@ -115,6 +120,14 @@ export async function run() {
   readline.emitKeypressEvents(process.stdin);
   process.stdin.setRawMode(true);
   process.stdin.resume();
+
+  // The frame is ~22 lines tall; a shorter window forces the terminal to
+  // scroll and leaves ghost rows. Warn instead of glitching silently.
+  if (process.stdout.rows && process.stdout.rows < 22) {
+    console.log(
+      `Terminal is ${process.stdout.rows} rows tall — please make the window at least 22 rows for a clean board, then restart.`,
+    );
+  }
 
   // One full clear + hide cursor; every frame after repaints in place.
   process.stdout.write("\x1b[2J\x1b[3J\x1b[H" + HIDE);
