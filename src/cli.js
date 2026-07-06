@@ -3,13 +3,29 @@
 
 import readline from "node:readline";
 import { PoolGame } from "./game.js";
-import { renderTable, COLORS, LEGEND } from "./render.js";
+import { renderTable, setSize, getSize, COLORS, LEGEND } from "./render.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const HOME = "\x1b[H"; // move cursor to top-left
 const ERASE_BELOW = "\x1b[0J"; // clear from cursor to end of screen
 const HIDE = "\x1b[?25l";
 const SHOW = "\x1b[?25h";
+const ALT_ON = "\x1b[?1049h"; // enter alternate screen (no scrollback)
+const ALT_OFF = "\x1b[?1049l"; // leave it, restoring the shell
+
+const HEADER_LINES = 6; // scoreboard + aim bar reserved above the table
+
+// Grow the table to fill the current window while keeping a ~2:1 table shape
+// (character cells are about twice as tall as wide, so cols ≈ 4 × rows).
+function fitTable() {
+  const termCols = process.stdout.columns || 80;
+  const termRows = process.stdout.rows || 24;
+  const availCols = termCols - 3; // side rails + margin
+  const availRows = termRows - HEADER_LINES - 2; // top/bottom rails
+  let rows = Math.max(9, Math.min(availRows, Math.floor(availCols / 4)));
+  let cols = Math.min(availCols, rows * 4);
+  setSize(cols, rows);
+}
 
 // Repaint in place: home the cursor, write the frame, then erase anything
 // left below. Avoids the scroll-into-scrollback stacking that a full 2J
@@ -62,7 +78,8 @@ function powerBar(p) {
 
 // Strip ANSI, hard-cap to the table width so a long message can't wrap and
 // change the frame height (which would reintroduce ghost rows).
-function clip(s, width = 76) {
+function clip(s) {
+  const width = getSize().COLS;
   const plain = s.replace(/\x1b\[[0-9;]*m/g, "");
   return plain.length > width ? plain.slice(0, width - 1) + "…" : plain;
 }
@@ -76,11 +93,16 @@ function aimHelp(angle, power, note) {
   ];
 }
 
+// Redraws the current aim frame; the resize handler calls this after
+// recomputing the table size.
+let repaintCurrent = () => {};
+
 // Resolve to {angle, power} when the player shoots, or null if they quit.
 function aimPhase(game, state, note) {
   return new Promise((resolve) => {
     const redraw = () =>
       draw(game, { aim: state.angle, extra: aimHelp(state.angle, state.power, note) });
+    repaintCurrent = redraw;
 
     const onKey = (_str, key) => {
       if (!key) return;
@@ -121,16 +143,33 @@ export async function run() {
   process.stdin.setRawMode(true);
   process.stdin.resume();
 
-  // The frame is ~22 lines tall; a shorter window forces the terminal to
-  // scroll and leaves ghost rows. Warn instead of glitching silently.
-  if (process.stdout.rows && process.stdout.rows < 22) {
-    console.log(
-      `Terminal is ${process.stdout.rows} rows tall — please make the window at least 22 rows for a clean board, then restart.`,
-    );
-  }
+  // Enter the alternate screen: a separate, non-scrolling buffer. Nothing we
+  // print can spill into the shell's scrollback, so ghost frames are
+  // impossible even if the board is taller than the window.
+  process.stdout.write(ALT_ON + HIDE + HOME);
 
-  // One full clear + hide cursor; every frame after repaints in place.
-  process.stdout.write("\x1b[2J\x1b[3J\x1b[H" + HIDE);
+  let torn = false;
+  const teardown = () => {
+    if (torn) return;
+    torn = true;
+    process.stdout.write(SHOW + ALT_OFF);
+    try {
+      process.stdin.setRawMode(false);
+    } catch {}
+    process.stdin.pause();
+  };
+  process.on("exit", teardown);
+  process.on("SIGINT", () => {
+    teardown();
+    process.exit(0);
+  });
+
+  // Size the table to the window now and whenever it is resized.
+  fitTable();
+  process.stdout.on("resize", () => {
+    fitTable();
+    repaintCurrent();
+  });
 
   const state = { angle: 0, power: 60 }; // aim toward the rack to start
   let note = `${COLORS.guide}Break! Turn toward the rack and hit hard.${COLORS.reset}`;
@@ -144,16 +183,13 @@ export async function run() {
     note = res.message;
   }
 
-  draw(game, { extra: [note] });
+  // Back to the normal screen, then print the final board + result there so
+  // it stays visible after the game closes.
+  teardown();
+  console.log(scoreboard(game) + "\n" + renderTable(game.balls, {}));
   if (game.gameOver) {
     console.log(`\n${COLORS.solid}=== Player ${game.winner + 1} wins! ===${COLORS.reset}\n`);
   } else {
     console.log("\nThanks for playing.\n");
   }
-
-  process.stdout.write(SHOW);
-  try {
-    process.stdin.setRawMode(false);
-  } catch {}
-  process.stdin.pause();
 }

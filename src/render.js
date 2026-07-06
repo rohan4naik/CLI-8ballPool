@@ -5,8 +5,16 @@
 import { TABLE, POCKETS, BALL_RADIUS } from "./table.js";
 import { add, scale, fromAngle } from "./vector.js";
 
-const COLS = 76;
-const ROWS = 15;
+// Grid size in characters. Mutable so the CLI can grow the table to fill the
+// terminal window (see setSize).
+let COLS = 76;
+let ROWS = 15;
+
+export function setSize(cols, rows) {
+  COLS = Math.max(40, Math.round(cols));
+  ROWS = Math.max(9, Math.round(rows));
+}
+export const getSize = () => ({ COLS, ROWS });
 
 // Plain foreground colours — used for text (scoreboard, guide).
 const C = {
