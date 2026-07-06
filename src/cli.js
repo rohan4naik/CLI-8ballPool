@@ -13,17 +13,22 @@ const SHOW = "\x1b[?25h";
 const ALT_ON = "\x1b[?1049h"; // enter alternate screen (no scrollback)
 const ALT_OFF = "\x1b[?1049l"; // leave it, restoring the shell
 
-const HEADER_LINES = 6; // scoreboard + aim bar reserved above the table
+// Lines used above/around the table on the tallest (aim) frame:
+//   2 scoreboard + 3 aim bar + 2 table rails = 7. One extra for safety.
+const CHROME_LINES = 8;
 
 // Grow the table to fill the current window while keeping a ~2:1 table shape
 // (character cells are about twice as tall as wide, so cols ≈ 4 × rows).
+// rows is hard-capped to what fits so a frame can never exceed the window
+// height (which would scroll and misalign — the "ghost" rows).
 function fitTable() {
   const termCols = process.stdout.columns || 80;
   const termRows = process.stdout.rows || 24;
-  const availCols = termCols - 3; // side rails + margin
-  const availRows = termRows - HEADER_LINES - 2; // top/bottom rails
-  let rows = Math.max(9, Math.min(availRows, Math.floor(availCols / 4)));
-  let cols = Math.min(availCols, rows * 4);
+  const availCols = Math.max(20, termCols - 2); // side rails
+  const availRows = Math.max(4, termRows - CHROME_LINES);
+  let rows = Math.min(availRows, Math.floor(availCols / 4));
+  rows = Math.min(Math.max(rows, 7), availRows); // playable, but never overflow
+  const cols = Math.min(availCols, rows * 4);
   setSize(cols, rows);
 }
 
@@ -31,7 +36,10 @@ function fitTable() {
 // left below. Avoids the scroll-into-scrollback stacking that a full 2J
 // clear causes on some terminals (e.g. Apple Terminal).
 function paint(text) {
-  process.stdout.write(HOME + text + "\n" + ERASE_BELOW);
+  // No trailing newline: leaving the cursor on the last written line avoids a
+  // one-line scroll. ERASE_BELOW wipes anything the previous (taller) frame
+  // left underneath.
+  process.stdout.write(HOME + text + ERASE_BELOW);
 }
 
 function groupLabel(g) {
@@ -136,6 +144,15 @@ export async function run() {
 
   if (!process.stdin.isTTY) {
     console.log("8ball-pool needs an interactive terminal. Run it directly in your shell.");
+    return;
+  }
+
+  const rows0 = process.stdout.rows || 24;
+  const cols0 = process.stdout.columns || 80;
+  if (rows0 < 12 || cols0 < 40) {
+    console.log(
+      `Terminal is ${cols0}×${rows0}. Please enlarge the window to at least 40×12 and run again.`,
+    );
     return;
   }
 
