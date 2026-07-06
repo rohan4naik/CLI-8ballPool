@@ -1,10 +1,10 @@
 {
-  "name": "8ball-pool",
-  "version": "1.0.1",
+  "name": "cli-8ballpool",
+  "version": "1.0.0",
   "description": "Play 8-ball pool in your terminal — real ball physics, aim guide, and full rules. Zero dependencies.",
   "type": "module",
   "bin": {
-    "8ball-pool": "bin/cli.js",
+    "cli-8ballpool": "bin/cli.js",
     "8ball": "bin/cli.js"
   },
   "files": [

@@ -1,10 +1,10 @@
-# 🎱 8ball-pool
+# 🎱 cli-8ballpool
 
 **Play 8-ball pool in your terminal** — real ball physics, live arrow-key
 aiming, animated shots, and full bar rules. Zero dependencies, pure Node.js.
 
 ```bash
-npx 8ball-pool
+npx cli-8ballpool
 ```
 
 ---
@@ -14,14 +14,14 @@ npx 8ball-pool
 Run it instantly with no install:
 
 ```bash
-npx 8ball-pool
+npx cli-8ballpool
 ```
 
 Or install globally:
 
 ```bash
-npm install -g 8ball-pool
-8ball-pool     # or the short alias: 8ball
+npm install -g cli-8ballpool
+cli-8ballpool     # or the short alias: 8ball
 ```
 
 Requires **Node.js 18+** and a real terminal at least **40×12** (bigger = bigger
