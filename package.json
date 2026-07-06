@@ -35,6 +35,10 @@
   },
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/rohan4naik/8ball-pool-cli.git"
+  },
+  "homepage": "https://github.com/rohan4naik/8ball-pool-cli#readme",
+  "bugs": {
+    "url": "https://github.com/rohan4naik/8ball-pool-cli/issues"
   }
 }
