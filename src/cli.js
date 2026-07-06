@@ -35,11 +35,20 @@ function fitTable() {
 // Repaint in place: home the cursor, write the frame, then erase anything
 // left below. Avoids the scroll-into-scrollback stacking that a full 2J
 // clear causes on some terminals (e.g. Apple Terminal).
+const ERASE_LINE = "\x1b[K"; // clear from cursor to end of line
+
 function paint(text) {
-  // No trailing newline: leaving the cursor on the last written line avoids a
-  // one-line scroll. ERASE_BELOW wipes anything the previous (taller) frame
-  // left underneath.
-  process.stdout.write(HOME + text + ERASE_BELOW);
+  // True in-place repaint: home, then write each line clearing its tail
+  // (ERASE_LINE) so shorter lines don't leave leftovers, joined with \r\n
+  // (raw mode needs the carriage return). No trailing newline, then wipe
+  // everything below — so the frame never scrolls or ghosts.
+  const lines = text.split("\n");
+  let out = HOME;
+  for (let i = 0; i < lines.length; i++) {
+    out += lines[i] + ERASE_LINE;
+    if (i < lines.length - 1) out += "\r\n";
+  }
+  process.stdout.write(out + ERASE_BELOW);
 }
 
 function groupLabel(g) {
@@ -48,13 +57,20 @@ function groupLabel(g) {
 
 function scoreboard(game, extra = []) {
   const turn = game.current;
-  const mark = (i) => (turn === i && !game.gameOver ? "▶ " : "  ");
   const remain = (g) => (g ? game.onTable(g).length : "-");
-  const lines = [
-    `${mark(0)}P1 ${groupLabel(game.groups[0]).padEnd(14)} left:${remain(game.groups[0])}    ${mark(1)}P2 ${groupLabel(game.groups[1]).padEnd(14)} left:${remain(game.groups[1])}`,
-    LEGEND,
-  ];
-  return lines.concat(extra).join("\n");
+  // Active player shown as a bold reversed badge so whose turn it is is
+  // unmistakable; the idle player is dimmed.
+  const badge = (i) => {
+    const body = `P${i + 1} ${groupLabel(game.groups[i])}  left:${remain(game.groups[i])}`;
+    const active = turn === i && !game.gameOver;
+    return active
+      ? `\x1b[7m\x1b[1m ▶ ${body} \x1b[0m`
+      : `\x1b[2m   ${body} \x1b[0m`;
+  };
+  const turnLine = game.gameOver
+    ? `${COLORS.solid}GAME OVER${COLORS.reset}`
+    : `${badge(0)}   ${badge(1)}`;
+  return [turnLine, LEGEND].concat(extra).join("\n");
 }
 
 function draw(game, { aim = null, extra = [] } = {}) {
